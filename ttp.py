@@ -19,6 +19,8 @@ class DiffAction(argparse.Action):
         pprint.pprint(diff.added_data)
         print('Changed data')
         pprint.pprint(diff.changed_data)
+        print('Order changes')
+        pprint.pprint(diff.order_changes)
 
 class PprintAction(argparse.Action):
     """Execute the pprint action"""
@@ -46,6 +48,9 @@ class TemplateDiff():
         self.removed_data = {}
         self.added_data = {}
         self.changed_data = {}
+        self.from_properties = []
+        self.to_properties = []
+        self.order_changes = []
         self.from_fields = self.get_fields(from_file)
         self.to_fields = self.get_fields(to_file)
         self.set_diff()
@@ -58,6 +63,7 @@ class TemplateDiff():
     def set_diff(self):
         # Get removed fields, removed data, and changed data.
         for property_uri, field in self.from_fields.items():
+            self.from_properties.append(property_uri)
             if property_uri not in self.to_fields:
                 # Field has been removed.
                 self.removed_fields[property_uri] = field
@@ -78,6 +84,7 @@ class TemplateDiff():
                         self.changed_data[property_uri][from_key] = (from_value, to_value)
         # Get added fields and added data.
         for property_uri, field in self.to_fields.items():
+            self.to_properties.append(property_uri)
             if property_uri not in self.from_fields:
                 # Field has been added.
                 self.added_fields[property_uri] = field
@@ -90,6 +97,13 @@ class TemplateDiff():
                         if property_uri not in self.added_data:
                             self.added_data[property_uri] = {}
                         self.added_data[property_uri][to_key] = to_value
+        # Get order difference.
+        for to_index, property_uri in enumerate(self.to_properties):
+            try:
+                from_index = self.from_properties.index(property_uri)
+            except ValueError:
+                from_index = None
+            self.order_changes.append((property_uri, None if from_index is None else to_index - from_index))
 
 parser = argparse.ArgumentParser(description='Perform actions on Tropy templates')
 subparsers = parser.add_subparsers(help='')
